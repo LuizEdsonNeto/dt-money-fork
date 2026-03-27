@@ -5,34 +5,52 @@ import { TransactionType } from "@/types/transaction";
 import { TransactionFormData, transactionSchema, defaultValues } from "./schema";
 import { useForm } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
+import { useEffect } from "react";
 
 export type FormModalProps = {
    title: string;
    closeModal: () => void;
    addTransaction: (transaction: ITransaction) => void;
+   initialData?: ITransaction | null; // Adicionado para receber os dados de edição
 }
 
-export const FormModal = ({ title, closeModal, addTransaction }: FormModalProps) => {
+export const FormModal = ({ title, closeModal, addTransaction, initialData }: FormModalProps) => {
   
   const {
     handleSubmit,
     register,
-    formState: { errors},
+    formState: { errors },
     setValue,
-    watch
+    watch,
+    reset // Trazendo o reset do react-hook-form
   } = useForm<TransactionFormData>({
     resolver: yupResolver(transactionSchema),
     defaultValues
   })  
+
+  // Preenche o formulário se vier dados (modo Edição)
+  useEffect(() => {
+    if (initialData) {
+      reset(initialData as unknown as TransactionFormData);
+    } else {
+      reset(defaultValues);
+    }
+  }, [initialData, reset]);
+
   const handleTypeChange = (type: TransactionType) => {
     setValue("type", type);
   }
 
   const handleSubmitForm = (data: TransactionFormData) => {
-    addTransaction(data as ITransaction);
-    closeModal();
+    // Monta o objeto mantendo o ID se for edição, ou criando um novo se for cadastro
+    const transactionToSave: ITransaction = {
+      ...(data as any),
+      id: initialData?.id || crypto.randomUUID(), 
+      data: initialData?.data || new Date()
+    };
+    
+    addTransaction(transactionToSave);
   }
-
 
   const type = watch("type");
 
@@ -49,7 +67,7 @@ export const FormModal = ({ title, closeModal, addTransaction }: FormModalProps)
 
        <div className="fixed inset-0 z-10 w-screen overflow-y-auto">
            <div className="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
-                <div className="relative transform overflow-hidden rounder-lg  bg-modal text-left shadow-xl sm:w-full sm:max-w-lg">
+                <div className="relative transform overflow-hidden rounded-lg bg-modal text-left shadow-xl sm:w-full sm:max-w-lg">
                     <button type="button" className="absolute top-0 right-0 mt-4 mr-5 text-gray-400 hover:text-gray-600"
                      onClick={closeModal}
                      aria-label="Fechar"
@@ -108,8 +126,6 @@ export const FormModal = ({ title, closeModal, addTransaction }: FormModalProps)
                 </div>
            </div>
         </div> 
-         
-
     </div>
   )
 }
